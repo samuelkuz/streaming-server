@@ -1,3 +1,1 @@
-pub mod display_info;
-pub mod windows_screen_capture;
-pub mod d3d;
+pub mod record_windows_screen;

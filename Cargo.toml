@@ -11,6 +11,7 @@ ac-ffmpeg = { path = "../rust-ac-ffmpeg" }
 tokio = { version = "1.25.0", features = ["full"] }
 itertools = "0.10.5"
 clap = { version = "4.1.4", features = ["derive"] }
+windows-rust-record = { git = "https://github.com/samuelkuz/windows-rust-record", branch = "master" }
 
 [dependencies.windows]
 version = "0.43"
