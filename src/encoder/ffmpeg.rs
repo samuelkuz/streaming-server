@@ -70,6 +70,7 @@ impl FfmpegEncoder {
         let mut frame = self.take_frame();
         let time_base = frame.time_base();
 
+        // video::frame::PictureType::None
         frame = frame
             .with_pts(Timestamp::new((frame_time as f64 * 9. / 1000.) as i64, time_base))
             .with_picture_type(video::frame::PictureType::I);

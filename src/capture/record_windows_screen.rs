@@ -1,6 +1,7 @@
 use std::{thread, time::Duration};
 use std::fs::File;
 use std::io::Write;
+use std::time::Instant;
 use windows_rust_record::windows_screen_capture::WindowsScreenCapture;
 use crate::encoder::ffmpeg::FfmpegEncoder;
 use crate::result::Result;
@@ -12,12 +13,11 @@ pub async fn record(mut windows_screen_capture: WindowsScreenCapture, mut encode
     let mut ticker =
         tokio::time::interval(Duration::from_millis((1000 / 30) as u64));
     
-    let test_frames = 300;
+    let test_frames = 420;
     let mut count = 0;
     
     // create file
     let mut file = File::create("test.raw").unwrap();
-
     while let Some(frame) = receiver.recv().await {
         let frame_time = frame.SystemRelativeTime().unwrap().Duration;
         let (resource, frame_bits) = unsafe { windows_screen_capture.get_frame_content(frame).unwrap() };
