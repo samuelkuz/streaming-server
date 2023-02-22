@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 failure = "0.1.8"
-ac-ffmpeg = { path = "../rust-ac-ffmpeg" }
+ac-ffmpeg = { git = "https://github.com/samuelkuz/rust-ac-ffmpeg", branch = "master" }
 tokio = { version = "1.25.0", features = ["full"] }
 itertools = "0.10.5"
 clap = { version = "4.1.4", features = ["derive"] }

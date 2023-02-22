@@ -23,7 +23,7 @@ unsafe impl Send for FfmpegEncoder {}
 
 impl FfmpegEncoder {
     pub fn new(width: u32, height: u32) -> Self {
-        let time_base = TimeBase::new(1, 90_000);
+        let time_base = TimeBase::new(1, 30);
 
         let pixel_format_option = "bgr0";
         let pixel_format = video::frame::get_pixel_format(pixel_format_option.clone());
@@ -60,20 +60,28 @@ impl FfmpegEncoder {
             encoder,
             frames: VecDeque::new(),
             pixel_format: pixel_format,
-            time_base: TimeBase::new(1, 90_000),
+            time_base: TimeBase::new(1, 30),
             width: width as usize,
             height: height as usize,
         }
     }
 
-    pub fn encode(&mut self, frame_data: &[u8], frame_time: i64) -> Result<Vec<u8>> {
+    pub fn encode(&mut self, frame_data: &[u8], frame_idx: &i64) -> Result<Vec<u8>> {
         let mut frame = self.take_frame();
         let time_base = frame.time_base();
 
         // video::frame::PictureType::None
+        // frame = frame
+        //     .with_pts(Timestamp::new((frame_time as f64 * 9. / 1000.) as i64, time_base))
+        //     .with_picture_type(video::frame::PictureType::None);
+
+        let mut frame_timestamp = Timestamp::new(*frame_idx, time_base);
+        // println!("ms: {}", frame_timestamp.as_millis().unwrap());
+        
         frame = frame
-            .with_pts(Timestamp::new((frame_time as f64 * 9. / 1000.) as i64, time_base))
-            .with_picture_type(video::frame::PictureType::I);
+            .with_pts(frame_timestamp)
+            .with_picture_type(video::frame::PictureType::None);
+
 
         // yuv420p
         // self.convert_bgr_yuv(

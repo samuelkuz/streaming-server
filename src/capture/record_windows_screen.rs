@@ -2,6 +2,7 @@ use std::{thread, time::Duration};
 use std::fs::File;
 use std::io::Write;
 use std::time::Instant;
+use ac_ffmpeg::time::Timestamp;
 use windows_rust_record::windows_screen_capture::WindowsScreenCapture;
 use crate::encoder::ffmpeg::FfmpegEncoder;
 use crate::result::Result;
@@ -13,27 +14,28 @@ pub async fn record(mut windows_screen_capture: WindowsScreenCapture, mut encode
     let mut ticker =
         tokio::time::interval(Duration::from_millis((1000 / 30) as u64));
     
-    let test_frames = 420;
-    let mut count = 0;
-    
+    let test_frames = 300;
+    let mut frame_idx: i64 = 0;
+
     // create file
     let mut file = File::create("test.raw").unwrap();
     while let Some(frame) = receiver.recv().await {
-        let frame_time = frame.SystemRelativeTime().unwrap().Duration;
+        // let frame_time = frame.SystemRelativeTime().unwrap().Duration;
+
         let (resource, frame_bits) = unsafe { windows_screen_capture.get_frame_content(frame).unwrap() };
         
         // encode here
-        let encoded = encoder.encode(frame_bits, frame_time).unwrap();
+        let encoded = encoder.encode(frame_bits, &frame_idx).unwrap();
         write(&mut file, &encoded).await.unwrap();
 
         unsafe {
             windows_screen_capture.unmap_d3d_context(&resource);
         }
 
-        if count == test_frames {
+        if frame_idx == test_frames {
             break;
         }
-        count += 1;
+        frame_idx += 1;
 
         ticker.tick().await;
     }
