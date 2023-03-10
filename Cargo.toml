@@ -12,6 +12,8 @@ tokio = { version = "1.25.0", features = ["full"] }
 itertools = "0.10.5"
 clap = { version = "4.1.4", features = ["derive"] }
 windows-rust-record = { git = "https://github.com/samuelkuz/windows-rust-record", branch = "master" }
+tokio-tungstenite = { version = "0.18.0", features = ["native-tls"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 
 [dependencies.windows]
 version = "0.43"

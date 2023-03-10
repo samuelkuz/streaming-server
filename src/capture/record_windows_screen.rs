@@ -14,18 +14,17 @@ pub async fn record(mut windows_screen_capture: WindowsScreenCapture, mut encode
     let mut ticker =
         tokio::time::interval(Duration::from_millis((1000 / 30) as u64));
     
-    let test_frames = 300;
+    let test_frames = 900;
     let mut frame_idx: i64 = 0;
 
     // create file
     let mut file = File::create("test.raw").unwrap();
     while let Some(frame) = receiver.recv().await {
-        // let frame_time = frame.SystemRelativeTime().unwrap().Duration;
-
+        let frame_time = frame.SystemRelativeTime().unwrap().Duration;
         let (resource, frame_bits) = unsafe { windows_screen_capture.get_frame_content(frame).unwrap() };
         
         // encode here
-        let encoded = encoder.encode(frame_bits, &frame_idx).unwrap();
+        let encoded = encoder.encode(frame_bits, frame_time).unwrap();
         write(&mut file, &encoded).await.unwrap();
 
         unsafe {
