@@ -6,26 +6,40 @@ use ac_ffmpeg::time::Timestamp;
 use windows_rust_record::windows_screen_capture::WindowsScreenCapture;
 use crate::encoder::ffmpeg::FfmpegEncoder;
 use crate::result::Result;
+// WebSocket Imports
+use futures_util::{SinkExt, StreamExt};
+use tokio::net::{TcpStream};
+use tokio_tungstenite::{WebSocketStream};
+use tokio_tungstenite::tungstenite::Message;
 
-pub async fn record(mut windows_screen_capture: WindowsScreenCapture, mut encoder: FfmpegEncoder) {
+
+
+pub async fn record(
+        mut windows_screen_capture: WindowsScreenCapture, 
+        mut encoder: FfmpegEncoder,
+        mut ws_stream: WebSocketStream<TcpStream>,
+    ) {
     let mut receiver = windows_screen_capture.get_frame_receiver().unwrap();
     windows_screen_capture.start_capture_session();
 
     let mut ticker =
         tokio::time::interval(Duration::from_millis((1000 / 30) as u64));
     
-    let test_frames = 900;
+    let test_frames = 1200;
     let mut frame_idx: i64 = 0;
 
     // create file
     let mut file = File::create("test.raw").unwrap();
+
     while let Some(frame) = receiver.recv().await {
         let frame_time = frame.SystemRelativeTime().unwrap().Duration;
         let (resource, frame_bits) = unsafe { windows_screen_capture.get_frame_content(frame).unwrap() };
         
         // encode here
         let encoded = encoder.encode(frame_bits, frame_time).unwrap();
-        write(&mut file, &encoded).await.unwrap();
+        //write(&mut file, &encoded).await.unwrap();
+        
+        ws_stream.send(Message::binary(encoded)).await.unwrap();
 
         unsafe {
             windows_screen_capture.unmap_d3d_context(&resource);
