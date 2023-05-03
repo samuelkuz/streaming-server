@@ -37,11 +37,11 @@ async fn get_websocket(peer:SocketAddr, stream: TcpStream) -> WebSocketStream<Tc
 #[tokio::main]
 async fn main() -> Result<()> {
     // TODO: Refactor web socket usage
-    let addr = "127.0.0.1:9002";
-    let listener = TcpListener::bind(&addr).await.expect("Can't listen");
-    let (stream, _) = listener.accept().await.unwrap();
-    let peer_addr = stream.peer_addr().expect("connected strings should have a peer address");
-    let mut ws_stream: WebSocketStream<TcpStream> = get_websocket(peer_addr, stream).await;
+    // let addr = "127.0.0.1:9002";
+    // let listener = TcpListener::bind(&addr).await.expect("Can't listen");
+    // let (stream, _) = listener.accept().await.unwrap();
+    // let peer_addr = stream.peer_addr().expect("connected strings should have a peer address");
+    // let mut ws_stream: WebSocketStream<TcpStream> = get_websocket(peer_addr, stream).await;
 
     // Video streaming logic
     let args = Args::parse();
@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
     let windows_screen_capture = WindowsScreenCapture::new(display)?;
     let encoder = FfmpegEncoder::new(width, height);
 
-    record(windows_screen_capture, encoder, ws_stream).await;
+    record(windows_screen_capture, encoder).await;
 
     Ok(())
 }
