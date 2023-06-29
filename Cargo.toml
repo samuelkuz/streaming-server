@@ -14,6 +14,10 @@ clap = { version = "4.1.4", features = ["derive"] }
 windows-rust-record = { git = "https://github.com/samuelkuz/windows-rust-record", branch = "master" }
 tokio-tungstenite = { version = "0.18.0", features = ["native-tls"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+webrtc = "0.8.0"
+serde = { version = "1.0.164", features = ["derive"] }
+serde_json = "1.0.97"
+bytes = "1.4.0"
 
 [dependencies.windows]
 version = "0.43"
