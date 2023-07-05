@@ -1,19 +1,13 @@
 use std::{thread, time::Duration};
 use std::fs::File;
 use std::io::Write;
-use std::time::Instant;
-use ac_ffmpeg::time::Timestamp;
+// use std::time::Instant;
+// use ac_ffmpeg::time::Timestamp;
 use windows_rust_record::windows_screen_capture::WindowsScreenCapture;
 use crate::encoder::ffmpeg::FfmpegEncoder;
 use crate::result::Result;
-// WebSocket Imports
-use futures_util::{SinkExt, StreamExt};
-use tokio::net::{TcpStream};
-use tokio_tungstenite::{WebSocketStream};
-use tokio_tungstenite::tungstenite::Message;
 // WebRTC imports
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use webrtc::media::Sample;
 use webrtc::track::track_local::track_local_static_sample::TrackLocalStaticSample;
 use bytes::Bytes;
@@ -21,15 +15,16 @@ use bytes::Bytes;
 pub async fn record(
         mut windows_screen_capture: WindowsScreenCapture, 
         mut encoder: FfmpegEncoder,
-        mut video_track: Arc<TrackLocalStaticSample>,
+        video_track: Arc<TrackLocalStaticSample>,
     ) {
     let mut receiver = windows_screen_capture.get_frame_receiver().unwrap();
     windows_screen_capture.start_capture_session();
 
-    let FRAME_RATE = 30;
+    // Hardcoding this value for now, but will need to add this to a config setup
+    let frame_rate = 30;
 
     let mut ticker =
-        tokio::time::interval(Duration::from_millis((1000 / FRAME_RATE) as u64));
+        tokio::time::interval(Duration::from_millis((1000 / frame_rate) as u64));
     
     let test_frames = 1200;
     let mut frame_idx: i64 = 0;
@@ -45,19 +40,10 @@ pub async fn record(
         let encoded = encoder.encode(frame_bits, frame_time).unwrap();
         //write(&mut file, &encoded).await.unwrap();
         
-        // self.video_track
-        //     .write_sample(&Sample {
-        //         data: input,
-        //         duration: Duration::from_millis((1000. / self.frame_rate as f64) as u64),
-        //         ..Default::default()
-        //     })
-        //     .await
-        //     .expect("TODO: panic message");
-
         let bytes = Bytes::from(encoded);
         video_track.write_sample(&Sample {
             data: bytes,
-            duration: Duration::from_millis((1000. / FRAME_RATE as f64) as u64),
+            duration: Duration::from_millis((1000. / frame_rate as f64) as u64),
             ..Default::default()
         }).await.expect("Could not write sample");
 
@@ -79,7 +65,7 @@ pub async fn record(
     thread::sleep(Duration::from_millis(25));
 }
 
-async fn write(file: &mut File, input: &Vec<u8>) -> Result<()> {
+async fn _write(file: &mut File, input: &Vec<u8>) -> Result<()> {
     file.write_all(input)?;
     Ok(())
 }
