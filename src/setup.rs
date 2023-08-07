@@ -1,10 +1,12 @@
 use crate::result::Result;
 use crate::signal_message::{SignalRequest, SignalResponse, Test};
 use std::sync::Arc;
+use std::sync::atomic::AtomicPtr;
+use std::sync::atomic::Ordering::Relaxed;
 
 use futures_util::{SinkExt, StreamExt};
 use futures_util::stream::SplitStream;
-use tokio::net::{TcpStream};
+use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, WebSocketStream, tungstenite::Message, MaybeTlsStream};
 
@@ -22,10 +24,18 @@ use webrtc::track::track_local::TrackLocal;
 use webrtc::ice_transport::ice_candidate::RTCIceCandidate;
 use webrtc::ice_transport::ice_candidate::RTCIceCandidateInit;
 
+static SESSION_ID: AtomicPtr<String> = AtomicPtr::new(std::ptr::null_mut());
+
 async fn handle_message(message: String, peer_connection: Arc<Mutex<RTCPeerConnection>>) -> Result<()> {
     let signal_message: SignalResponse = serde_json::from_str(message.as_str())?;
 
     match signal_message {
+        SignalResponse::Session { id } => {
+            println!("Session successfully created with id: {}", id);
+
+            let id_ptr = Box::into_raw(Box::new(id));
+            SESSION_ID.store(id_ptr, Relaxed);
+        },
         SignalResponse::IceCandidate { ice_candidate } => {
             let rtc_ice_candidate: RTCIceCandidateInit = serde_json::from_str(&ice_candidate).expect("Could not serialize String to RTCIceCandidateInit");
 
@@ -79,6 +89,16 @@ async fn handle_connection(mut incoming: SplitStream<WebSocketStream<MaybeTlsStr
             },
         }
     }
+}
+
+// TODO: Refactor how we set the session_id (Recently going through Rust Atomics & Locks book made me want to try this)
+async fn get_session_id() -> String {
+    // This should be safe because we make a request to the server with our offer first via: `send(Message::Text(offer_request_json)).await?;`
+    // My signaling server then sends a message via the WebSocket with a unique SessionId
+    // Before running `set_local_description(offer.clone())` which sends off the requests to the ICE servers, I wait for the SESSION_ID ptr to not be null.
+    let id_ptr = SESSION_ID.load(Relaxed);
+
+    unsafe { &*id_ptr }.clone()
 }
 
 pub async fn setup_webrtc() -> Result<Arc<TrackLocalStaticSample>> {
@@ -164,6 +184,8 @@ pub async fn setup_webrtc() -> Result<Arc<TrackLocalStaticSample>> {
     let signal_outgoing = Arc::new(Mutex::new(signal_outgoing));
     let signal_clone = Arc::clone(&signal_outgoing);
 
+    // let mut session_id = uuid::Uuid::new_v4().to_string();
+
     lock.on_ice_candidate(Box::new(move |candidate: Option<RTCIceCandidate>| {
         let outgoing_clone = Arc::clone(&signal_clone);
 
@@ -172,12 +194,12 @@ pub async fn setup_webrtc() -> Result<Arc<TrackLocalStaticSample>> {
                 let candidate_json = candidate.to_json().unwrap();
                 let candidate_json_string = serde_json::to_string(&candidate_json).unwrap();
                 
-                let clone = Arc::clone(&outgoing_clone);
-                let mut ws_outgoing = clone.lock().await;
-
-                let ice_request = SignalRequest::CallerIceCandidate { id: "asdf".to_owned(), ice_candidate: candidate_json_string };
+                let current_id = get_session_id().await;
+                let ice_request = SignalRequest::CallerIceCandidate { id: current_id, ice_candidate: candidate_json_string };
                 let ice_request_json = serde_json::to_string(&ice_request).unwrap();
 
+                let clone = Arc::clone(&outgoing_clone);
+                let mut ws_outgoing = clone.lock().await;
                 ws_outgoing.send(Message::Text(ice_request_json)).await.expect("Sending ice candidate failed.");
             }
         })
@@ -186,12 +208,16 @@ pub async fn setup_webrtc() -> Result<Arc<TrackLocalStaticSample>> {
     // Makes an offer, sets the LocalDescription, and starts our UDP listeners
     let offer = lock.create_offer(None).await?;
     let sdp = offer.sdp.clone();
-    let offer_request = SignalRequest::Offer { id: "asdf".to_owned(), sdp: sdp };
+    let offer_request = SignalRequest::Offer { sdp: sdp };
     let offer_request_json = serde_json::to_string(&offer_request).unwrap();
 
     let mut outgoing_guard = signal_outgoing.lock().await;
     outgoing_guard.send(Message::Text(offer_request_json)).await?;
     drop(outgoing_guard);
+
+    while SESSION_ID.load(Relaxed).is_null() {
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    }
 
     lock.set_local_description(offer.clone()).await?;
     drop(lock);

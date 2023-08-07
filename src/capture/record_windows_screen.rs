@@ -1,7 +1,7 @@
 use std::{thread, time::Duration};
 use std::fs::File;
 use std::io::Write;
-// use std::time::Instant;
+use std::time::Instant;
 // use ac_ffmpeg::time::Timestamp;
 use windows_rust_record::windows_screen_capture::WindowsScreenCapture;
 use crate::encoder::ffmpeg::FfmpegEncoder;
@@ -26,13 +26,15 @@ pub async fn record(
     let mut ticker =
         tokio::time::interval(Duration::from_millis((1000 / frame_rate) as u64));
     
-    let test_frames = 1200;
+    let test_frames = 300;
     let mut frame_idx: i64 = 0;
 
     // create file
     let mut file = File::create("test.raw").unwrap();
 
     while let Some(frame) = receiver.recv().await {
+        //let now = Instant::now();
+
         let frame_time = frame.SystemRelativeTime().unwrap().Duration;
         let (resource, frame_bits) = unsafe { windows_screen_capture.get_frame_content(frame).unwrap() };
         
@@ -56,6 +58,7 @@ pub async fn record(
         }
         frame_idx += 1;
 
+        // println!("ms: {}", now.elapsed().as_millis());
         ticker.tick().await;
     }
 

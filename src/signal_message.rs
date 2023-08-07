@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SignalRequest {
     Offer {
-        id: String,
         sdp: String,
     },
     Answer {
@@ -33,6 +32,9 @@ pub struct Test {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SignalResponse {
+    Session {
+        id: String,
+    },
     Offer {
         sdp: String,
     },

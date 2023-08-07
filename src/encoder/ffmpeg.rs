@@ -1,11 +1,8 @@
-use itertools::Itertools;
-use std::num::Wrapping;
 use std::collections::VecDeque;
 use std::collections::HashMap;
 use ac_ffmpeg::codec::video::{PixelFormat, VideoEncoder, VideoFrame, VideoFrameMut};
 use ac_ffmpeg::codec::{video, Encoder};
 use ac_ffmpeg::time::{TimeBase, Timestamp};
-use std::time::Instant;
 
 // use crate::encoder::frame_pool::FramePool;
 use crate::result::Result;
@@ -73,23 +70,6 @@ impl FfmpegEncoder {
         frame = frame
             .with_pts(Timestamp::new((frame_time as f64 * 9. / 1000.) as i64, time_base))
             .with_picture_type(video::frame::PictureType::None);
-
-        // let mut frame_timestamp = Timestamp::new(*frame_idx, time_base);
-
-        // frame = frame
-        //     .with_pts(frame_timestamp)
-        //     .with_picture_type(video::frame::PictureType::None);
-
-
-        // yuv420p
-        // self.convert_bgr_yuv(
-        //     frame_data,
-        //     frame
-        //         .planes_mut()
-        //         .iter_mut()
-        //         .map(|p| p.data_mut())
-        //         .collect(),
-        // );
         
         // bgr
         frame.planes_mut()[0].data_mut().copy_from_slice(frame_data);
@@ -119,70 +99,5 @@ impl FfmpegEncoder {
 
         VideoFrameMut::black(self.pixel_format, self.width as _, self.height as _)
             .with_time_base(self.time_base)
-    }
-
-    /// Converts the BGR8 array.
-    #[allow(dead_code)]
-    fn convert_bgr_yuv(&self, bgr: &[u8], yuv: Vec<&mut [u8]>) {
-        let start = Instant::now();
-        let mut upos = 0_usize;
-        let mut vpos = 0_usize;
-        let mut i = 0_usize;
-        let (y, u, v) = yuv.into_iter().tuples().next().unwrap();
-
-        for line in 0..self.height {
-            if line % 2 != 0 {
-                let mut x = 0_usize;
-                while x < self.width {
-                    let b = Wrapping(bgr[4 * i] as u32);
-                    let g = Wrapping(bgr[4 * i + 1] as u32);
-                    let r = Wrapping(bgr[4 * i + 2] as u32);
-
-                    y[i] = (((Wrapping(66) * r + Wrapping(129) * g + Wrapping(25) * b) >> 8)
-                        + Wrapping(16))
-                    .0 as u8;
-                    u[upos] = (((Wrapping(-38i8 as u32) * r
-                        + Wrapping(-74i8 as u32) * g
-                        + Wrapping(112) * b)
-                        >> 8)
-                        + Wrapping(128))
-                    .0 as u8;
-                    v[vpos] = (((Wrapping(112) * r
-                        + Wrapping(-94i8 as u32) * g
-                        + Wrapping(-18i8 as u32) * b)
-                        >> 8)
-                        + Wrapping(128))
-                    .0 as u8;
-
-                    i += 1;
-                    upos += 1;
-                    vpos += 1;
-
-                    let b = Wrapping(bgr[4 * i] as u32);
-                    let g = Wrapping(bgr[4 * i + 1] as u32);
-                    let r = Wrapping(bgr[4 * i + 2] as u32);
-
-                    y[i] = (((Wrapping(66) * r + Wrapping(129) * g + Wrapping(25) * b) >> 8)
-                        + Wrapping(16))
-                    .0 as u8;
-                    i += 1;
-                    x += 2;
-                }
-            } else {
-                for _x in 0..self.width {
-                    let b = Wrapping(bgr[4 * i] as u32);
-                    let g = Wrapping(bgr[4 * i + 1] as u32);
-                    let r = Wrapping(bgr[4 * i + 2] as u32);
-
-                    y[i] = (((Wrapping(66) * r + Wrapping(129) * g + Wrapping(25) * b) >> 8)
-                        + Wrapping(16))
-                    .0 as u8;
-                    i += 1;
-                }
-            }
-        }
-
-        let duration = start.elapsed();
-        println!("Time elapsed in convert bgr8: {:?}", duration);
     }
 }
